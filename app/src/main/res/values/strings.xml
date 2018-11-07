@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">SodukoSolverApp</string>
+
+    <string name = "val1">1</string>
+    <string name = "val2">2</string>
+    <string name = "val3">3</string>
+    <string name = "val4">4</string>
+    <string name = "val5">5</string>
+    <string name = "val6">6</string>
+    <string name = "val7">7</string>
+    <string name = "val8">8</string>
+    <string name = "val9">9</string>
+    <string name = "remove">Remove</string>
+
+    <string-array name="inputs">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+        <item>7</item>
+        <item>8</item>
+        <item>9</item>
+        <item>Remove</item>
+    </string-array>
+
+</resources>
