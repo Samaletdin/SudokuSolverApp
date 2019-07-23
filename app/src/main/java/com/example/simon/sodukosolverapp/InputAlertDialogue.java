@@ -11,7 +11,6 @@ public class InputAlertDialogue extends Activity {
     private Spinner spinner;
 
     public InputAlertDialogue(Context context){
-        super();
         spinner = new Spinner(context);
     }
 }

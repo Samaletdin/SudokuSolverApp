@@ -1,6 +1,7 @@
 package com.example.simon.sodukosolverapp;
 
 
+import android.annotation.SuppressLint;
 import android.graphics.Point;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -8,50 +9,37 @@ import android.util.Log;
 import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewTreeObserver;
+import android.view.View.OnTouchListener;
+import android.view.ViewTreeObserver.OnGlobalLayoutListener;
 import android.widget.Button;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 
-import java.lang.reflect.Array;
+import android.widget.Toast;
+import com.example.simon.sodukosolverapp.backend.SodukoSolver;
+import com.example.simon.sodukosolverapp.R.id;
+import com.example.simon.sodukosolverapp.R.layout;
 
 public class MainActivity extends AppCompatActivity {
 
     public static int[][] mboard = new int[9][9];
-    //private SudokuSlot[][] board;
     public TableLayout boardSlots;
     public Button solverButton;
     public Button clearButton;
 
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //board = new SudokuSlot[9][9];
-        mboard = new int[9][9];
-        System.out.println("ONCREATE");
 
-        setContentView(R.layout.activity_main);
-        boardSlots = findViewById(R.id.SlotHolder);
-        solverButton = findViewById(R.id.button1);
-        clearButton = findViewById(R.id.buttonClear);
-        //Need to draw the board before I can measure it (this makes the code not hard coded)
-        boardSlots.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                System.out.println("ONGLOBALLAYOUT");
+        setContentView(layout.activity_main);
+        boardSlots = findViewById(id.SlotHolder);
+        solverButton = findViewById(id.button1);
+        clearButton = findViewById(id.buttonClear);
+        generateLayout(savedInstanceState);
 
-                boardSlots.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                generateBoxes(boardSlots.getWidth(), boardSlots.getHeight());
-                if(savedInstanceState!=null){
-                    onRestoreInstanceState(savedInstanceState);
-                }else{
-                    mboard = new int[9][9];
-                }
-            }
-        });
-
-       solverButton.setOnTouchListener(new View.OnTouchListener() {
+        solverButton.setOnTouchListener(new OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 solveBoard();
@@ -59,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-       clearButton.setOnTouchListener(new View.OnTouchListener() {
+       clearButton.setOnTouchListener(new OnTouchListener() {
            @Override
            public boolean onTouch(View v, MotionEvent event) {
                clearBoard();
@@ -67,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
            }
        });
 
-        /**if(savedInstanceState!=null) {
+        if(savedInstanceState!=null) {
             System.out.println("SAVED STATE NOT NULL");
             if (savedInstanceState.containsKey("mBoard1")) {
                 System.out.println("SAVED STATE CONTAINS KEY!");
@@ -82,15 +70,49 @@ public class MainActivity extends AppCompatActivity {
                 mboard[8] = savedInstanceState.getIntArray("mBoard9");
                 updateFromMboard();
             }
-        }*/
+        }
+    }
+
+    private void generateLayout(final Bundle savedInstanceState) {
+        boardSlots.getViewTreeObserver().addOnGlobalLayoutListener(new OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                boardSlots.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                generateBoxes(boardSlots.getWidth(), boardSlots.getHeight());
+                if(savedInstanceState!=null){
+                    onRestoreInstanceState(savedInstanceState);
+                }else{
+                    mboard = new int[9][9];
+                }
+            }
+        });
     }
 
 
     private void solveBoard(){
-        //SodukoSolver sodsolv = new SodukoSolver(mboard);
         if(moreThan17input()) {
-            mboard = SodukoSolver.execute(mboard);
+            SodukoSolver sodukoSolver = new SodukoSolver(mboard);
+            mboard = sodukoSolver.execute(mboard);
             updateFromMboard();
+            showStatus(sodukoSolver);
+        } else {
+            Toast.makeText(this, "Need at least 17 inputs to solve", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showStatus(final SodukoSolver sodukoSolver) {
+        switch (sodukoSolver.getStatus()){
+            case COMPLETED:
+                Toast.makeText(this, "Success!", Toast.LENGTH_SHORT).show();
+                break;
+            case ERROR:
+                Toast.makeText(this, "There is no solution!", Toast.LENGTH_SHORT).show();
+                break;
+            case MULTIPLE_ANSWERS:
+                Toast.makeText(this, "Non unique answer!", Toast.LENGTH_SHORT).show();
+                break;
+            default:
+                throw new RuntimeException("Non handled SudokoSolverStatus for the toast: " + sodukoSolver.getStatus());
         }
     }
 
@@ -183,11 +205,10 @@ public class MainActivity extends AppCompatActivity {
         for(int i = 0, x = boardSlots.getChildCount(); i < x; i++) {
             View view = boardSlots.getChildAt(i);
             if (view instanceof TableRow) {
-                TableRow row = (TableRow) view;
+                final TableRow row = (TableRow) view;
                 for (int j = 0; j < 9; j++) {
-                    View slot = row.getChildAt(j);
+                    final View slot = row.getChildAt(j);
                     if(slot instanceof SudokuSlot) {
-                        System.out.println("SETTING SVALUE!!");
                          ((SudokuSlot) slot).setsValue(String.valueOf(mboard[i][j]));
                     }
                 }

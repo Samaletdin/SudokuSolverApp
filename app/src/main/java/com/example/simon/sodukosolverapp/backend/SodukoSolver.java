@@ -1,4 +1,4 @@
-package com.example.simon.sodukosolverapp;
+package com.example.simon.sodukosolverapp.backend;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -6,7 +6,11 @@ import java.util.Scanner;
 
 public class SodukoSolver {
 
-    private enum Status{
+    public Status getStatus() {
+        return currentStatus;
+    }
+
+    public enum Status{
         PRIME_NUMBER_CONVERSION,
         CALCULATING,
         UPDATING_BOARD,
@@ -15,27 +19,26 @@ public class SodukoSolver {
         COMPLETED,
         NORMALISING_NUMBERS,
         MULTIPLE_ANSWERS,
-        ERROR,
+        ERROR;
     }
-    
 
-    private int[][] board;
-    private int[] productRow;
-    private int[] productColumn;
-    private int[][] productQuadrant;
+    private final int[][] board;
+    private final int[] productRow;
+    private final int[] productColumn;
+    private final int[][] productQuadrant;
     private int[][] availableOptions;
+    private static final int[][] possibleSolution = new int[9][];
 
     private boolean stillWorkToDo;
     private boolean hasUpdatedThisIteration;
     private boolean noSolution;
     private boolean running;
-    private static boolean completedOnce;
-    private static boolean multipleAnswers;
-    public static int[][] finalAnswer;
+    private static boolean completedOnce = false;
+    private boolean multipleAnswers = false;
 
-    private int fullBoardValue = 2*3*5*7*11*13*17*19*23;
+    private final int fullBoardValue = 2*3*5*7*11*13*17*19*23;
 
-    private Status currentStatus;
+    private static Status currentStatus;
 
     public SodukoSolver(int[][] matrix){
         board = matrix;
@@ -55,17 +58,16 @@ public class SodukoSolver {
     public void run(){
         switch(currentStatus){
             case PRIME_NUMBER_CONVERSION:
-                System.out.println("PRIME CONVERSION");
                 convertNumbers();
                 currentStatus = Status.CALCULATING;
                 break;
+
             case CALCULATING:
-                System.out.println("CALCULATING");
                 calculateCurrent();
                 currentStatus = Status.UPDATING_BOARD;
                 break;
+
             case UPDATING_BOARD:
-                System.out.println("UPDATING");
                 hasUpdatedThisIteration = false;
                 updateBoard();
                 if(!stillWorkToDo){
@@ -79,8 +81,8 @@ public class SodukoSolver {
                     currentStatus = Status.ERROR;
                 }
                 break;
+
             case COMPARING:
-                System.out.println("COMPARING");
                 compareBoard();
                 if(hasUpdatedThisIteration){
                     currentStatus = Status.CALCULATING;
@@ -88,24 +90,32 @@ public class SodukoSolver {
                     currentStatus = Status.CHANCING;
                 }
                 break;
+
             case CHANCING:
-                System.out.println("CHANCING");
                 running = false;
                 break;
+
             case NORMALISING_NUMBERS:
-                System.out.println("NORMALISING");
+                convertNumbersBack();
                 currentStatus = Status.COMPLETED;
                 break;
+
             case COMPLETED:
+                System.out.println("SUCCESS!");
                 if(completedOnce){
                     currentStatus = Status.MULTIPLE_ANSWERS;
+                    break;
                 }
+                handleSuccessCase();
                 running = false;
                 break;
+
             case MULTIPLE_ANSWERS:
                 System.out.println("Non-unique");
+                multipleAnswers = true;
                 running = false;
                 return;
+
             case ERROR:
                 System.out.println("Find another job");
                 running = false;
@@ -118,21 +128,19 @@ public class SodukoSolver {
      * @param board 9*9 matrix with sudoku
      * @return 9*9 matrix with solved sudoku or empty if no solution available.
      */
-    public static int[][] execute(int[][] board){
-        System.out.println(board.toString());
-        SodukoSolver sodsolv = new SodukoSolver(board);
-        while(sodsolv.running){
-            sodsolv.run();
+    public int[][] execute(int[][] board){
+        final SodukoSolver sodukoSolver = new SodukoSolver(copyMatrix(board));
+        while(sodukoSolver.running){
+            sodukoSolver.run();
         }
-        if(sodsolv.currentStatus == Status.COMPLETED){
-            sodsolv.boardPrinter();
-        }else{
-            executeHelper(new SodukoSolver(sodsolv.board));
-        }
-        if(!multipleAnswers && completedOnce){
-            return finalAnswer;
-        }else{
-            return new int[9][9];
+        handeSpecialIteration(sodukoSolver);
+
+        if (!multipleAnswers && completedOnce) {
+          currentStatus = Status.COMPLETED;
+          printFinalSolution();
+          return possibleSolution.clone();
+        } else {
+            return board;
         }
 
     }
@@ -141,94 +149,99 @@ public class SodukoSolver {
      * Reads a sudoku as string input and solves
      * @return 9*9 matrix with solved sudoku.
      */
-    public static int[][] execute(){
-        Scanner scan;
-        int[][] board = new int[9][9];
+    public int[][] execute(){
+      final int[][] initalBoard = new int[9][9];
         try
         {
-            scan = new Scanner(System.in);
-            int i = 0;
-            int j;
-            while (scan.hasNextLine()){
-                if(i==9)break;
-                for(j = 0; j < 9;j++){
-                    board[i][j] = scan.nextInt();
-                    System.out.print(board[i][j]+ " ");
-                }
-                System.out.println();
-                i++;
-            }
-            System.out.println("Parsed");
-            System.out.println(board.toString());
-            SodukoSolver sodsolv = new SodukoSolver(board);
+            parseInput(initalBoard);
+            final SodukoSolver sodsolv = new SodukoSolver(copyMatrix(initalBoard));
             while(sodsolv.running){
                 sodsolv.run();
             }
-            if(sodsolv.currentStatus == Status.COMPLETED){
-                sodsolv.boardPrinter();
-            }else{
-                executeHelper(new SodukoSolver(sodsolv.board));
-            }
-        }catch (Exception e){
-            System.out.print(e.toString());
+            handeSpecialIteration(sodsolv);
+        }catch (RuntimeException e){
+            e.printStackTrace();
         }
-        if(!multipleAnswers && completedOnce){
-            return finalAnswer;
-        }else{
-            return new int[9][9];
+        if (!multipleAnswers && completedOnce) {
+            printFinalSolution();
+            return possibleSolution;
+        } else {
+            return initalBoard;
         }
 
+    }
+
+    private static void handeSpecialIteration(final SodukoSolver sodsolv) {
+        if (sodsolv.currentStatus == Status.COMPLETED) {
+            return;
+        } else {
+            executeHelper(new SodukoSolver(sodsolv.board));
+        }
+    }
+
+    private static void parseInput(final int[][] board) {
+        final Scanner scan;
+        scan = new Scanner(System.in);
+        int row = 0;
+        int column;
+        while (scan.hasNextLine()){
+            if(row==9) {
+                break;
+            }
+            for(column = 0; column < 9;column++){
+                board[row][column] = scan.nextInt();
+            }
+            row++;
+        }
     }
 
     /**
      * Recursive method that tries to solve a sudoku using match and compare and then
      * guesses the inputs recursively (using the slots with least alternatives) checks all to see if
      * there are multiple solutions.
-     * @param sodSolv new sudokusolver with updated board.
+     * @param sodukoSolver new sudokusolver with updated board.
      * @return true if solved
      */
-    private static boolean executeHelper(SodukoSolver sodSolv){
+    private static void executeHelper(SodukoSolver sodukoSolver){
         System.out.println("NEW ITERATION");
-        sodSolv.currentStatus = Status.CALCULATING;
-        while(sodSolv.running){
-            sodSolv.run();
+        sodukoSolver.currentStatus = Status.CALCULATING;
+        while(sodukoSolver.running){
+            sodukoSolver.run();
         }
-        if(sodSolv.currentStatus == Status.CHANCING){
-            //sodSolv.matchAvailableWithBoard();
-            int[] indexWithLeastOptions = Util.findMinMatrix(sodSolv.availableOptions);
-            for(int i = 0; i < sodSolv.availableOptions[indexWithLeastOptions[0]][indexWithLeastOptions[1]]; i++){
+        if(sodukoSolver.currentStatus == Status.CHANCING){
+            //sodukoSolver.matchAvailableWithBoard();
+            final int[] indexWithLeastOptions = Util.findLeastAmountOfSLotOptions(sodukoSolver.availableOptions);
+            for(int i = 0; i < sodukoSolver.availableOptions[indexWithLeastOptions[0]][indexWithLeastOptions[1]]; i++){
 
-                sodSolv.updateSingle(indexWithLeastOptions[0], indexWithLeastOptions[1], i);
-                int[][] tempB = new int[9][];
-                for (int j = 0; j < 9; j++) {
-                    tempB[j] = Arrays.copyOf(sodSolv.board[j], sodSolv.board[j].length);
-                }
-                if(executeHelper(new SodukoSolver(tempB))){
-                    return true;
+                sodukoSolver.updateSingle(indexWithLeastOptions[0], indexWithLeastOptions[1], i);
+                executeHelper(new SodukoSolver(copyMatrix(sodukoSolver.board)));
+                if(sodukoSolver.multipleAnswers){
+                    break;
                 }
             }
         }
-        if(sodSolv.currentStatus == Status.ERROR){
-            System.out.println("ERROR!!");
-            return false;
-        }
-        if(sodSolv.currentStatus == Status.MULTIPLE_ANSWERS){
-            System.out.println("MULTIPLE ANSWERS!!");
-            multipleAnswers = true;
-            return false;
-        }
-        if(sodSolv.currentStatus == Status.COMPLETED){
-            System.out.println("SUCCESS!");
-            sodSolv.convertNumbersBack();
-            completedOnce = true;
-            finalAnswer = sodSolv.board;
-            sodSolv.boardPrinter();
-            return true;
-        }
-        return false;
     }
 
+    private static int[][] copyMatrix(final int[][] initalBoard) {
+        final int[][] tempB = new int[9][];
+        for (int j = 0; j < 9; j++) {
+            tempB[j] = Arrays.copyOf(initalBoard[j], initalBoard[j].length);
+        }
+        return tempB;
+    }
 
+    private void savePossibleSolution() {
+        for (int j = 0; j < 9; j++) {
+            possibleSolution[j] = Arrays.copyOf(board[j], board[j].length);
+        }
+    }
+
+    private void handleSuccessCase() {
+        System.out.println("SUCCESS!");
+        savePossibleSolution();
+        boardPrinter();
+        completedOnce = true;
+    }
 
 
     /**
@@ -238,7 +251,16 @@ public class SodukoSolver {
     private void boardPrinter(){
         for(int i = 0; i < 9; i++){
             for(int j = 0; j < 9; j++){
-                System.out.print(board[i][j] + " ");
+                System.out.print(possibleSolution[i][j] + " ");
+            }
+            System.out.print("\n");
+        }
+    }
+
+    private static void printFinalSolution(){
+        for(int i = 0; i < 9; i++){
+            for(int j = 0; j < 9; j++){
+                System.out.print(possibleSolution[i][j] + " ");
             }
             System.out.print("\n");
         }
@@ -255,14 +277,14 @@ public class SodukoSolver {
     }
 
     private void updateSingle(int row, int column, int index){
-        ArrayList<Integer> rowPrimes;
-        ArrayList<Integer> columnPrimes;
-        ArrayList<Integer> quadrantPrimes;
+        final ArrayList<Integer> rowPrimes;
+        final ArrayList<Integer> columnPrimes;
+        final ArrayList<Integer> quadrantPrimes;
 
         columnPrimes = Util.reducer(fullBoardValue/productColumn[column]);
         rowPrimes = Util.reducer(fullBoardValue/productRow[row]);
         quadrantPrimes = matchNumbersQuadrant(row,column);
-        ArrayList<Integer> sameVal = matchNumbersHelper(rowPrimes, columnPrimes, quadrantPrimes);
+        final ArrayList<Integer> sameVal = matchNumbersHelper(rowPrimes, columnPrimes, quadrantPrimes);
         if(index == -1){
             stillWorkToDo = true;
             availableOptions[row][column] = sameVal.size();
@@ -270,7 +292,6 @@ public class SodukoSolver {
                 noSolution = true;
             }
             if(sameVal.size()==1){
-                System.out.println("UPDATED IN MATCHING!");
                 availableOptions[row][column] = fullBoardValue;
                 hasUpdatedThisIteration = true;
                 board[row][column] = sameVal.get(0);
@@ -287,9 +308,6 @@ public class SodukoSolver {
      * relevant number is found it will then update it.
      */
     private void updateBoard(){
-        ArrayList<Integer> rowPrimes;
-        ArrayList<Integer> columnPrimes;
-        ArrayList<Integer> quadrantPrimes;
         stillWorkToDo = false;
         for(int i = 0; i < 9; i++){
             for(int j = 0; j < 9; j++){
@@ -305,7 +323,7 @@ public class SodukoSolver {
      * a number is excluded from all open slots except one it will update the only option for
      * given slot.
      */
-    public void compareBoard(){
+    private void compareBoard(){
         hasUpdatedThisIteration = false;
         for(int i = 0; i < 9; i++){
             for(int j = 0; j < 9; j++){
@@ -316,20 +334,19 @@ public class SodukoSolver {
         }
     }
 
-    public int compare(int row, int column){
+    private int compare(int row, int column){
         return compare(row,column,-1);
     }
 
-    public int compare(int row, int column, int index){
+    private int compare(int row, int column, int index){
 
         ArrayList<Integer> available = matchNumbersQuadrant(row, column);
-        available = Util.CompareHelper(available, Util.reducer(fullBoardValue/productColumn[column]));
-        available = Util.CompareHelper(available, Util.reducer(fullBoardValue/productRow[row]));
+        available = Util.compareHelper(available, Util.reducer(fullBoardValue/productColumn[column]));
+        available = Util.compareHelper(available, Util.reducer(fullBoardValue/productRow[row]));
         available = excluder(row,column,available);
 
         if(index == -1) {
             if (available.size() == 1) {
-                System.out.println("UPDATED IN COMPARE!");
                 hasUpdatedThisIteration = true;
                 availableOptions[row][column] = fullBoardValue;
                 return available.get(0);
@@ -341,19 +358,19 @@ public class SodukoSolver {
     /**
      * Help method for compare(), compares the available numbers to the unavailable to
      * the other slots in given quadrant.
-     * @param i
-     * @param j
+     * @param row
+     * @param column
      * @param available
      * @return
      */
-    private ArrayList<Integer> excluder(int i, int j, ArrayList<Integer> available){
-        int rows = Util.relevantData(i);
-        int columns = Util.relevantData(j);
+    private ArrayList<Integer> excluder(int row, int column, ArrayList<Integer> available){
+        final int rows = Util.relevantData(row);
+        final int columns = Util.relevantData(column  );
         for(int x = rows-3; x < rows; x++){
             for(int y = columns-3; y < columns; y++){
                 if(board[x][y] == 1){
-                    if(x != i || y != j){
-                        available = Util.CompareHelper(available, matcher(x,y));
+                    if(x != row || y != column){
+                        available = Util.compareHelper(available, matcher(x,y));
                     }
                 }
 
@@ -369,7 +386,7 @@ public class SodukoSolver {
      * @return Array with the unavailable inputs for nearby slots
      */
     private ArrayList<Integer> matcher(int row, int column){
-        ArrayList<Integer> filled = Util.reducer(productRow[row]);
+        final ArrayList<Integer> filled = Util.reducer(productRow[row]);
         filled.addAll(Util.reducer(productColumn[column]));
         return filled;
     }
@@ -387,8 +404,8 @@ public class SodukoSolver {
     private ArrayList<Integer> matchNumbersHelper(ArrayList<Integer> row, ArrayList<Integer> column, ArrayList<Integer> quadrant){
         ArrayList<Integer> sameVal;
 
-        sameVal =  Util.CompareHelper(row, column);
-        sameVal = Util.CompareHelper(sameVal, quadrant);
+        sameVal =  Util.compareHelper(row, column);
+        sameVal = Util.compareHelper(sameVal, quadrant);
         //System.out.println("same values at all: ");
         //for(int i = 0; i < sameVal.size();i++){
         //    System.out.println(sameVal.get(i));
@@ -405,8 +422,8 @@ public class SodukoSolver {
      * @return  arraylist with available prime numbers to match
      */
     private ArrayList<Integer> matchNumbersQuadrant(int i, int j){
-        int quadrantX;
-        int quadrantY;
+        final int quadrantX;
+        final int quadrantY;
         if(i<3) quadrantX = 0;
         else if(i<6)quadrantX = 1;
         else quadrantX = 2;
@@ -440,9 +457,9 @@ public class SodukoSolver {
         //OBS I know this looks really messy but I feel like 9 for loops is even messier...
         //efficiency wise it is about as heavy as the double loop above.
         for(int i = 0; i < 3; i++){
-            int addX = i*3;
+            final int addX = i*3;
             for(int j = 0; j < 3; j++){
-                int addY = j*3;
+                final int addY = j*3;
                 productQuadrant[i][j] = 1;
                 for(int x = 0; x < 3; x++){
                     for(int y = 0; y < 3; y ++){
@@ -480,14 +497,6 @@ public class SodukoSolver {
             }
         }
     }
-
-
-   /** public static void main(String[] args){
-
-        SodukoSolver.execute();
-
-    }*/
-
 }
 
 

@@ -1,4 +1,4 @@
-package com.example.simon.sodukosolverapp;
+package com.example.simon.sodukosolverapp.backend;
 
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -6,14 +6,17 @@ import java.util.Scanner;
 public final class Util{
 
 
+    private Util() {
+    }
+
     /**
      * Finds the values that 2 arrays has in common and returns a new array containing them
      * @param array1
      * @param array2
      * @return Array containing the values array1 & array2 has in common
      */
-    public static ArrayList<Integer> CompareHelper(ArrayList<Integer> array1, ArrayList<Integer> array2){
-        ArrayList<Integer> same = new ArrayList<>();
+    public static ArrayList<Integer> compareHelper(Iterable<Integer> array1, Iterable<Integer> array2){
+        final ArrayList<Integer> same = new ArrayList<>();
         for(int int1 : array1){
             for(int int2 : array2){
                 if(int1 == int2){
@@ -45,9 +48,9 @@ public final class Util{
      * @param matrix
      * @return
      */
-    public static int[] findMinMatrix(int[][] matrix){
+    public static int[] findLeastAmountOfSLotOptions(int[][] matrix){
         int minVal = matrix[0][0];
-        int[] retVal = new int[]{0,0};
+        int[] retVal = {0,0};
         for(int i = 0; i < matrix.length; i++){
             for(int j = 0; j < matrix[0].length; j++){
                 if(matrix[i][j] < minVal && matrix[i][j] != 1){
@@ -93,7 +96,8 @@ public final class Util{
             case 7: return 17;
             case 8: return 19;
             case 9: return 23;
-            default: return 1; //this is for the 0:s
+            case 0: return 1;
+            default: throw new RuntimeException("input not supported: " + number); //this is for the 0:s
         }
     }
 
@@ -108,7 +112,7 @@ public final class Util{
             case 17: return 7;
             case 19: return 8;
             case 23: return 9;
-            default: return 0;
+            default: return number;
         }
     }
 
@@ -120,11 +124,11 @@ public final class Util{
      */
     public static ArrayList<Integer> reducer(int num){
         int i = 2;
-        ArrayList primeFactors = new ArrayList();
+        final ArrayList<Integer> primeFactors = new ArrayList();
         while(i < num){
             for(i = 2; i < num; i++){
                 if(num%i == 0){
-                    num = num/i;
+                    num /= i;
                     primeFactors.add(i);
                     break;
                 }
@@ -138,7 +142,6 @@ public final class Util{
         if(i<3)return 3;
         if(i<6)return 6;
         return 9;
-
     }
 
     /**
@@ -146,24 +149,21 @@ public final class Util{
      * @return the board
      */
     public static int[][] stringToIntegerArray(){
-        Scanner scan;
         int[][] retVal = new int[9][9];
-        try
-        {
+        try (final Scanner scan = new Scanner(System.in)) {
             String[] line;
-            scan = new Scanner(System.in);
             int i = 0;
             int j;
-            while (scan.hasNextLine()){
+            while (scan.hasNextLine()) {
                 line = scan.nextLine().split(" ");
                 j = 0;
-                for(String value : line){
+                for (String value : line) {
                     retVal[i][j++] = Integer.parseInt(value);
                 }
                 i++;
             }
-        }catch (Exception e){
-            System.out.print(e.toString());
+        } catch (Exception e) {
+            throw new RuntimeException("Exception while parsing sudoku!\n " + e.getStackTrace());
         }
         return retVal;
     }

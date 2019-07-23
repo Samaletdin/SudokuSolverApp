@@ -1,17 +1,23 @@
 package com.example.simon.sodukosolverapp;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.app.AlertDialog.Builder;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Color;
+import android.support.v7.widget.AppCompatTextView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Spinner;
 import android.widget.TextView;
+import com.example.simon.sodukosolverapp.MainActivity;
+import com.example.simon.sodukosolverapp.R;
 
-public class SudokuSlot extends android.support.v7.widget.AppCompatTextView {
+@SuppressLint("ViewConstructor")
+public class SudokuSlot extends AppCompatTextView {
     private String sValue;
     private final String[] values = getResources().getStringArray(R.array.inputs);
     private final int dim = 40;
@@ -23,9 +29,9 @@ public class SudokuSlot extends android.support.v7.widget.AppCompatTextView {
         this(context, "", row, column);
     }
 
-    public SudokuSlot(final Context context, String value, int row, int column){
+    @SuppressLint("ClickableViewAccessibility")
+    public SudokuSlot(final Context context, final String value, final int row, final int column){
         super(context);
-        System.out.println("SUDOKUSLOT MADE");
         this.setHeight(dim);
         this.setWidth(dim);
         this.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
@@ -42,8 +48,7 @@ public class SudokuSlot extends android.support.v7.widget.AppCompatTextView {
             public boolean onTouch(View v, MotionEvent event) {
                 if(event.getAction() == MotionEvent.ACTION_DOWN){
                     Log.d("SUDOKUSLOT", "PRESSED A SLOT!");
-                    System.out.println("PRESSED A SLOT!");
-                    AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                    final Builder builder = new Builder(context);
                     builder.setTitle("Choose input");
                     builder.setSingleChoiceItems(values, -1, new DialogInterface.OnClickListener() {
                         @Override
@@ -53,7 +58,7 @@ public class SudokuSlot extends android.support.v7.widget.AppCompatTextView {
                             dialogInterface.dismiss();
                         }
                     });
-                    AlertDialog mDialog = builder.create();
+                    final AlertDialog mDialog = builder.create();
                     mDialog.show();
                 }
                 return false;
@@ -62,13 +67,12 @@ public class SudokuSlot extends android.support.v7.widget.AppCompatTextView {
     }
 
 
-    public void setsValue(String val){
-        System.out.println(val);
+    public void setsValue(final String val){
         sValue = val;
-        if(val.equals("") || val.equals("0")){
-            //DoNothing
-        }else{
+        if(!val.isEmpty() && !val.equals("0")) {
             this.setText(val);
+        } else {
+            this.setText("");
         }
         //this.setBackgroundColor(Color.rgb((int)(Math.random()*255), (int)(Math.random()*255), (int)(Math.random()*255))); //For debugging  and fun
     }
@@ -80,7 +84,7 @@ public class SudokuSlot extends android.support.v7.widget.AppCompatTextView {
         return Integer.valueOf(sValue);
     }
 
-    private void updateText(String string){
+    private void updateText(final String string){
         System.out.println(string);
         if(string.equals("Remove")){
             this.setText("");
