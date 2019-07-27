@@ -34,7 +34,7 @@ public class SodukoSolver {
     private boolean noSolution;
     private boolean running;
     private static boolean completedOnce = false;
-    private boolean multipleAnswers = false;
+    private static boolean multipleAnswers = false;
 
     private final int fullBoardValue = 2*3*5*7*11*13*17*19*23;
 
@@ -130,12 +130,17 @@ public class SodukoSolver {
      */
     public int[][] execute(int[][] board){
         final SodukoSolver sodukoSolver = new SodukoSolver(copyMatrix(board));
+        resetStaticVariables();
         while(sodukoSolver.running){
             sodukoSolver.run();
         }
+
         handeSpecialIteration(sodukoSolver);
 
-        if (!multipleAnswers && completedOnce) {
+        if(multipleAnswers) {
+            currentStatus = Status.MULTIPLE_ANSWERS;
+            return board;
+        } else if (completedOnce) {
           currentStatus = Status.COMPLETED;
           printFinalSolution();
           return possibleSolution.clone();
@@ -143,6 +148,13 @@ public class SodukoSolver {
             return board;
         }
 
+    }
+
+    private void resetStaticVariables() {
+        currentStatus = Status.PRIME_NUMBER_CONVERSION;
+        noSolution = false;
+        multipleAnswers = false;
+        completedOnce = false;
     }
 
     /**
@@ -209,15 +221,14 @@ public class SodukoSolver {
             sodukoSolver.run();
         }
         if(sodukoSolver.currentStatus == Status.CHANCING){
-            //sodukoSolver.matchAvailableWithBoard();
             final int[] indexWithLeastOptions = Util.findLeastAmountOfSLotOptions(sodukoSolver.availableOptions);
             for(int i = 0; i < sodukoSolver.availableOptions[indexWithLeastOptions[0]][indexWithLeastOptions[1]]; i++){
 
-                sodukoSolver.updateSingle(indexWithLeastOptions[0], indexWithLeastOptions[1], i);
-                executeHelper(new SodukoSolver(copyMatrix(sodukoSolver.board)));
                 if(sodukoSolver.multipleAnswers){
                     break;
                 }
+                sodukoSolver.updateSingle(indexWithLeastOptions[0], indexWithLeastOptions[1], i);
+                executeHelper(new SodukoSolver(copyMatrix(sodukoSolver.board)));
             }
         }
     }
@@ -406,10 +417,6 @@ public class SodukoSolver {
 
         sameVal =  Util.compareHelper(row, column);
         sameVal = Util.compareHelper(sameVal, quadrant);
-        //System.out.println("same values at all: ");
-        //for(int i = 0; i < sameVal.size();i++){
-        //    System.out.println(sameVal.get(i));
-        //}
 
         return sameVal;
     }
